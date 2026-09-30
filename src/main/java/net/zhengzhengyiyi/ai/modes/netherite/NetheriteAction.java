@@ -12,7 +12,8 @@ import net.minecraft.util.Hand;
  */
 public class NetheriteAction {
     private EntityPlayerMPFake bot;
-    private String difficulty = "middle";
+    @SuppressWarnings("unused")
+    private String difficulty = "middle"; // Reserved for future difficulty-based behavior
     private boolean usingAxe = false;
     private int shieldCooldown = 0;
     private boolean shouldBlock = false;

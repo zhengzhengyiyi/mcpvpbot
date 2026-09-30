@@ -161,9 +161,34 @@ public class CrystalMovement {
             double strafeZ = Math.sin(Math.toRadians(yaw)) * strafeAmount * strafeDirection;
             
             Vec3d newPos = new Vec3d(botX + moveX + strafeX, botY, botZ + moveZ + strafeZ);
-            bot.setPosition(newPos);
+            
+            // Check collision before moving - only prevent if center would be inside solid block
+            if (isPositionSafe(newPos)) {
+                bot.setPosition(newPos);
+            }
         }
         
-        // Crystal bot does not jump
+        // Crystal bot does not jump unless stuck in a block
+        // Check if bot's feet are inside a solid block
+        BlockPos feetPos = bot.getBlockPos();
+        if (!bot.getEntityWorld().isAir(feetPos) && bot.isOnGround()) {
+            // Feet are inside a solid block, jump to get out
+            bot.jump();
+        }
+    }
+    
+    private boolean isPositionSafe(Vec3d pos) {
+        // Check if the center position would be inside a solid block
+        BlockPos blockPos = new BlockPos((int) pos.x, (int) pos.y, (int) pos.z);
+        
+        // Allow passable blocks (air, water, cobweb, etc.)
+        if (bot.getEntityWorld().isAir(blockPos)) {
+            return true;
+        }
+        
+        // If it's a solid block, prevent movement
+        // This allows the bot to walk into blocks naturally (Minecraft will push it out)
+        // but prevents it from completely going inside solid blocks
+        return false;
     }
 }
