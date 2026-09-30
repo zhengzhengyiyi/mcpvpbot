@@ -15,25 +15,39 @@ public class BotAI {
     private String botType = "smp";
     private String difficulty = "middle";
     
-    private final BotMovement movement;
-    private final BotCombat combat;
+    private MovementBehavior movement;
+    private CombatBehavior combat;
     
     public BotAI(EntityPlayerMPFake bot) {
         this.bot = bot;
+        // Default to old classes for backward compatibility
         this.movement = new BotMovement(bot);
         this.combat = new BotCombat(bot);
     }
     
     public void setBotType(String type) {
         this.botType = type;
-        movement.setBotType(type);
-        combat.setBotType(type);
+        
+        // BotMovement and BotCombat now handle all bot types as delegators
+        // Just need to update their botType field
+        if (movement instanceof BotMovement) {
+            ((BotMovement) movement).setBotType(type);
+        }
+        if (combat instanceof BotCombat) {
+            ((BotCombat) combat).setBotType(type);
+        }
     }
     
     public void setDifficulty(String difficulty) {
         this.difficulty = difficulty;
-        movement.setDifficulty(difficulty);
-        combat.setDifficulty(difficulty);
+        
+        // Propagate difficulty to movement and combat
+        if (movement instanceof BotMovement) {
+            ((BotMovement) movement).setDifficulty(difficulty);
+        }
+        if (combat instanceof BotCombat) {
+            ((BotCombat) combat).setDifficulty(difficulty);
+        }
     }
     
     public void tick(MinecraftServer server) {
@@ -69,10 +83,15 @@ public class BotAI {
         // Move towards target first
         movement.moveTowards(target);
         
-        // If in hit range, attempt to attack
-        if (distance <= hitRange && attackCooldown == 0) {
+        // Crystal bot has its own attack logic with distance checks
+        if (botType.equals("crystal")) {
             combat.attack(target, distance);
-            attackCooldown = 10;
+        } else {
+            // Other bots use the old attack logic
+            if (distance <= hitRange && attackCooldown == 0) {
+                combat.attack(target, distance);
+                attackCooldown = 10;
+            }
         }
     }
     
@@ -172,8 +191,12 @@ public class BotAI {
     
     public void setBot(EntityPlayerMPFake bot) {
         this.bot = bot;
-        movement.setBot(bot);
-        combat.setBot(bot);
+        if (movement != null) {
+            movement.setBot(bot);
+        }
+        if (combat != null) {
+            combat.setBot(bot);
+        }
     }
     
     public EntityPlayerMPFake getBot() {

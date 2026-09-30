@@ -8,16 +8,15 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.enchantment.Enchantments;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.zhengzhengyiyi.ai.modes.crystal.CrystalArmorSetup;
+import net.zhengzhengyiyi.ai.modes.smp.SmpArmorSetup;
+import net.zhengzhengyiyi.ai.modes.netherite.NetheriteArmorSetup;
+import net.zhengzhengyiyi.ai.modes.mace.MaceArmorSetup;
 import net.minecraft.world.GameMode;
 import net.zhengzhengyiyi.ai.BotAI;
 
@@ -338,228 +337,36 @@ public class PvpBot implements ModInitializer {
 
 	private void equipSmpArmor(EntityPlayerMPFake fakePlayer) {
 		LOGGER.info("Equipping SMP armor to bot. Bot is alive: {}", fakePlayer.isAlive());
-
-		// Create netherite armor
-		// ItemStack helmet = new ItemStack(Items.NETHERITE_HELMET);
-		// ItemStack chestplate = new ItemStack(Items.NETHERITE_CHESTPLATE);
-		// ItemStack leggings = new ItemStack(Items.NETHERITE_LEGGINGS);
-		// ItemStack boots = new ItemStack(Items.NETHERITE_BOOTS);
-
-		ItemStack helmet = new ItemStack(Items.DIAMOND_HELMET);
-		ItemStack chestplate = new ItemStack(Items.DIAMOND_CHESTPLATE);
-		ItemStack leggings = new ItemStack(Items.DIAMOND_LEGGINGS);
-		ItemStack boots = new ItemStack(Items.DIAMOND_BOOTS);
-
-		helmet.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 3);
-		chestplate.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 3);
-		leggings.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 3);
-		boots.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 3);
-
-		helmet.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-		chestplate.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-		leggings.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-		boots.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-
-		// Create netherite weapons
-		ItemStack sword = new ItemStack(Items.NETHERITE_SWORD);
-		ItemStack axe = new ItemStack(Items.NETHERITE_AXE);
-
-		sword.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.SHARPNESS), 3);
-		sword.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-
-		axe.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.SHARPNESS), 3);
-		axe.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-
-		// Create shield
-		ItemStack shield = new ItemStack(Items.SHIELD);
-
-		// Create water bucket for web handling
-		ItemStack waterBucket = new ItemStack(Items.WATER_BUCKET, 1);
-
-		LOGGER.info("Created armor items, weapons, shield, and water bucket");
-
-		// Equip the armor using equipStack
-		fakePlayer.equipStack(EquipmentSlot.HEAD, helmet);
-		fakePlayer.equipStack(EquipmentSlot.CHEST, chestplate);
-		fakePlayer.equipStack(EquipmentSlot.LEGS, leggings);
-		fakePlayer.equipStack(EquipmentSlot.FEET, boots);
-
-		// Equip shield in offhand
-		fakePlayer.equipStack(EquipmentSlot.OFFHAND, shield);
-
-		// Add weapons to inventory using setStack
-		fakePlayer.getInventory().setStack(0, sword); // Sword in main hand slot
-		fakePlayer.getInventory().setStack(1, axe); // Axe in second slot
-		fakePlayer.getInventory().setStack(2, waterBucket); // Water bucket in third slot
+		
+		// Use the new SmpArmorSetup class
+		SmpArmorSetup.setup(fakePlayer);
 
 		LOGGER.info("SMP armor, weapons, shield, and water bucket equipped successfully");
 	}
 
 	private void equipNetheriteArmor(EntityPlayerMPFake fakePlayer) {
-		LOGGER.info("Equipping SMP armor to bot. Bot is alive: {}", fakePlayer.isAlive());
+		LOGGER.info("Equipping Netherite armor to bot. Bot is alive: {}", fakePlayer.isAlive());
+		
+		// Use the new NetheriteArmorSetup class
+		NetheriteArmorSetup.setup(fakePlayer);
 
-		// Create netherite armor
-		ItemStack helmet = new ItemStack(Items.NETHERITE_HELMET);
-		ItemStack chestplate = new ItemStack(Items.NETHERITE_CHESTPLATE);
-		ItemStack leggings = new ItemStack(Items.NETHERITE_LEGGINGS);
-		ItemStack boots = new ItemStack(Items.NETHERITE_BOOTS);
-
-		// ItemStack helmet = new ItemStack(Items.DIAMOND_HELMET);
-		// ItemStack chestplate = new ItemStack(Items.DIAMOND_CHESTPLATE);
-		// ItemStack leggings = new ItemStack(Items.DIAMOND_LEGGINGS);
-		// ItemStack boots = new ItemStack(Items.DIAMOND_BOOTS);
-
-		helmet.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 3);
-		chestplate.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 4);
-		leggings.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 3);
-		boots.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 4);
-
-		helmet.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-		chestplate.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-		leggings.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-		boots.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 4);
-
-		// Create netherite weapons
-		ItemStack sword = new ItemStack(Items.NETHERITE_SWORD);
-		ItemStack axe = new ItemStack(Items.NETHERITE_AXE);
-
-		sword.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.SHARPNESS), 4);
-		sword.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 5);
-		sword.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.SWEEPING_EDGE), 3);
-
-		axe.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.SHARPNESS), 4);
-		axe.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 5);
-
-		// Create shield
-		ItemStack shield = new ItemStack(Items.SHIELD);
-
-		// Create water bucket for web handling
-		ItemStack waterBucket = new ItemStack(Items.WATER_BUCKET, 1);
-
-		LOGGER.info("Created armor items, weapons, shield, and water bucket");
-
-		// Equip the armor using equipStack
-		fakePlayer.equipStack(EquipmentSlot.HEAD, helmet);
-		fakePlayer.equipStack(EquipmentSlot.CHEST, chestplate);
-		fakePlayer.equipStack(EquipmentSlot.LEGS, leggings);
-		fakePlayer.equipStack(EquipmentSlot.FEET, boots);
-
-		// Equip shield in offhand
-		fakePlayer.equipStack(EquipmentSlot.OFFHAND, shield);
-
-		// Add weapons to inventory using setStack
-		fakePlayer.getInventory().setStack(0, sword); // Sword in main hand slot
-		fakePlayer.getInventory().setStack(1, axe); // Axe in second slot
-		fakePlayer.getInventory().setStack(2, waterBucket); // Water bucket in third slot
-
-		LOGGER.info("SMP armor, weapons, shield, and water bucket equipped successfully");
+		LOGGER.info("Netherite armor, weapons, shield, and water bucket equipped successfully");
 	}
 
 	private void equipMaceArmor(EntityPlayerMPFake fakePlayer) {
 		LOGGER.info("Equipping Mace armor to bot. Bot is alive: {}", fakePlayer.isAlive());
-
-		// Create netherite armor
-		ItemStack helmet = new ItemStack(Items.NETHERITE_HELMET);
-		ItemStack chestplate = new ItemStack(Items.NETHERITE_CHESTPLATE);
-		ItemStack leggings = new ItemStack(Items.NETHERITE_LEGGINGS);
-		ItemStack boots = new ItemStack(Items.NETHERITE_BOOTS);
-
-		// Create elytra
-		ItemStack elytra = new ItemStack(Items.ELYTRA);
-
-		// Create mace
-		ItemStack mace = new ItemStack(Items.MACE);
-
-		// Create ender pearls for vertical catch
-		ItemStack enderPearls = new ItemStack(Items.ENDER_PEARL, 64);
-
-		LOGGER.info("Created armor items, elytra, mace, and ender pearls");
-
-		// Equip the armor using equipStack
-		fakePlayer.equipStack(EquipmentSlot.HEAD, helmet);
-		fakePlayer.equipStack(EquipmentSlot.CHEST, chestplate);
-		fakePlayer.equipStack(EquipmentSlot.LEGS, leggings);
-		fakePlayer.equipStack(EquipmentSlot.FEET, boots);
-
-		// Equip elytra in chest slot (replacing chestplate)
-		fakePlayer.equipStack(EquipmentSlot.CHEST, elytra);
-
-		// Add mace and ender pearls to inventory
-		fakePlayer.getInventory().setStack(0, mace); // Mace in main hand slot
-		fakePlayer.getInventory().setStack(1, enderPearls); // Ender pearls in second slot
+		
+		// Use the new MaceArmorSetup class
+		MaceArmorSetup.setup(fakePlayer);
 
 		LOGGER.info("Mace armor, elytra, mace, and ender pearls equipped successfully");
 	}
 
 	private void equipCrystalArmor(EntityPlayerMPFake fakePlayer) {
 		LOGGER.info("Equipping Crystal armor to bot. Bot is alive: {}", fakePlayer.isAlive());
-
-		// Create netherite armor
-		ItemStack helmet = new ItemStack(Items.NETHERITE_HELMET);
-		ItemStack chestplate = new ItemStack(Items.NETHERITE_CHESTPLATE);
-		ItemStack leggings = new ItemStack(Items.NETHERITE_LEGGINGS);
-		ItemStack boots = new ItemStack(Items.NETHERITE_BOOTS);
-
-		// Create netherite sword for knockback attacks
-		ItemStack sword = new ItemStack(Items.NETHERITE_SWORD);
-
-		// Create end crystals
-		ItemStack endCrystals = new ItemStack(Items.END_CRYSTAL, 64);
-
-		// Create obsidian for placing crystals
-		ItemStack obsidian = new ItemStack(Items.OBSIDIAN, 64);
-
-		// Create respawn anchors
-		ItemStack anchors = new ItemStack(Items.RESPAWN_ANCHOR, 64);
-
-		// Create glowstone for charging anchors
-		ItemStack glowstone = new ItemStack(Items.GLOWSTONE, 64);
-
-		// Create totems
-		ItemStack totem1 = new ItemStack(Items.TOTEM_OF_UNDYING, 1);
-		ItemStack totem2 = new ItemStack(Items.TOTEM_OF_UNDYING, 1);
-
-		// Create golden apple
-		ItemStack goldenApple = new ItemStack(Items.GOLDEN_APPLE, 1);
-
-		// Create ender pearls for mobility
-		ItemStack enderPearls = new ItemStack(Items.ENDER_PEARL, 64);
-
-		LOGGER.info("Created armor items, sword, crystals, obsidian, anchors, glowstone, totems, golden apple, and pearls");
-
-		helmet.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 4);
-		chestplate.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 3);
-		leggings.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.BLAST_PROTECTION), 4);
-		boots.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION), 4);
-		boots.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.FEATHER_FALLING), 4);
-
-		helmet.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 5);
-		chestplate.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 5);
-		leggings.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 5);
-		boots.addEnchantment(fakePlayer.getEntityWorld().getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING), 5);
-
-		// Equip the armor using equipStack
-		fakePlayer.equipStack(EquipmentSlot.HEAD, helmet);
-		fakePlayer.equipStack(EquipmentSlot.CHEST, chestplate);
-		fakePlayer.equipStack(EquipmentSlot.LEGS, leggings);
-		fakePlayer.equipStack(EquipmentSlot.FEET, boots);
-
-		fakePlayer.equipStack(EquipmentSlot.OFFHAND, new ItemStack(Items.TOTEM_OF_UNDYING));
-
-		// Add items to inventory with new layout
-		fakePlayer.getInventory().setStack(0, sword); // Sword in main hand slot
-		fakePlayer.getInventory().setStack(1, endCrystals); // End crystals in second slot
-		fakePlayer.getInventory().setStack(2, obsidian); // Obsidian in third slot
-		fakePlayer.getInventory().setStack(3, anchors); // Respawn anchors in fourth slot
-		fakePlayer.getInventory().setStack(4, glowstone); // Glowstone in fifth slot
-		fakePlayer.getInventory().setStack(5, totem1); // Totem in sixth slot
-		fakePlayer.getInventory().setStack(6, goldenApple); // Golden apple in seventh slot
-		fakePlayer.getInventory().setStack(7, totem2); // Totem in eighth slot
-		fakePlayer.getInventory().setStack(8, enderPearls); // Ender pearls in ninth slot
-
-		for (int i = 11; i < 20; i++) {
-			fakePlayer.getInventory().setStack(i, new ItemStack(Items.TOTEM_OF_UNDYING));
-		}
+		
+		// Use the new CrystalArmorSetup class
+		CrystalArmorSetup.setup(fakePlayer);
 
 		LOGGER.info("Crystal armor, sword, crystals, obsidian, anchors, glowstone, totems, golden apple, and pearls equipped successfully");
 	}
