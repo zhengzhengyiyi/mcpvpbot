@@ -50,7 +50,7 @@ public class CrystalArmorSetup {
         bot.getInventory().setStack(2, new ItemStack(Items.OBSIDIAN, 64)); // Slot 2: obsidian
         bot.getInventory().setStack(3, new ItemStack(Items.RESPAWN_ANCHOR, 64)); // Slot 3: respawn anchors
         bot.getInventory().setStack(4, new ItemStack(Items.GLOWSTONE, 64)); // Slot 4: glowstone
-        bot.getInventory().setStack(5, new ItemStack(Items.TOTEM_OF_UNDYING, 5)); // Slot 5: 5 totems
+        bot.getInventory().setStack(5, new ItemStack(Items.TOTEM_OF_UNDYING, 10)); // Slot 5: 10 totems
         bot.getInventory().setStack(6, new ItemStack(Items.GOLDEN_APPLE, 64)); // Slot 6: golden apples
         bot.getInventory().setStack(8, new ItemStack(Items.ENDER_PEARL, 16)); // Slot 8: ender pearls
         

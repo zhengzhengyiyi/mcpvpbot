@@ -41,6 +41,9 @@ public class BotCombat implements CombatBehavior {
         this.smpAction.setBot(bot);
         this.netheriteAction.setBot(bot);
         this.maceAction.setBot(bot);
+        
+        // Link crystal movement to crystal action for totem cooldown check
+        // This will be set when movement is initialized
     }
     
     public void setBotType(String type) {
@@ -52,6 +55,10 @@ public class BotCombat implements CombatBehavior {
         // Propagate difficulty to mode-specific actions
         if (smpAction != null) smpAction.setDifficulty(difficulty);
         if (netheriteAction != null) netheriteAction.setDifficulty(difficulty);
+    }
+    
+    public CrystalAction getCrystalAction() {
+        return crystalAction;
     }
     
     @Override

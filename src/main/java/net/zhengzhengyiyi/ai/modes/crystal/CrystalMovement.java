@@ -12,6 +12,7 @@ import net.minecraft.util.math.Vec3d;
  */
 public class CrystalMovement {
     private EntityPlayerMPFake bot;
+    private CrystalAction combat;
     private int strafeDirection = 1;
     private int strafeTimer = 0;
     
@@ -28,8 +29,17 @@ public class CrystalMovement {
         this.bot = bot;
     }
     
+    public void setCombat(CrystalAction combat) {
+        this.combat = combat;
+    }
+    
     public void moveTowards(ServerPlayerEntity target) {
         if (target == null || !target.isAlive()) {
+            return;
+        }
+        
+        // Don't move if bot is restoring totem
+        if (combat != null && combat.isRestoringTotem()) {
             return;
         }
         

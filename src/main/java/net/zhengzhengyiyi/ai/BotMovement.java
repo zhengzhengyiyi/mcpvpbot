@@ -18,6 +18,7 @@ public class BotMovement implements MovementBehavior {
     
     private EntityPlayerMPFake bot;
     private String botType = "smp";
+    private BotCombat combat;
     
     // Mode-specific movement implementations
     private CrystalMovement crystalMovement;
@@ -50,6 +51,14 @@ public class BotMovement implements MovementBehavior {
         // Propagate difficulty to mode-specific movements
         if (smpMovement != null) smpMovement.setDifficulty(difficulty);
         if (netheriteMovement != null) netheriteMovement.setDifficulty(difficulty);
+    }
+    
+    public void setCombat(BotCombat combat) {
+        this.combat = combat;
+        // Link crystal movement to crystal action for totem cooldown check
+        if (crystalMovement != null && combat != null) {
+            crystalMovement.setCombat(combat.getCrystalAction());
+        }
     }
     
     @Override

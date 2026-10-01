@@ -91,8 +91,10 @@ public class NetheriteAction {
     }
     
     private boolean targetIsUsingShield(ServerPlayerEntity target) {
-        ItemStack offhand = target.getEquippedStack(EquipmentSlot.OFFHAND);
-        return offhand.getItem() == Items.SHIELD;
+        // ItemStack offhand = target.getEquippedStack(EquipmentSlot.OFFHAND);
+        // return offhand.getItem() == Items.SHIELD;
+        return false;
+        // TODO: SHIELD
     }
     
     private void switchToAxe() {

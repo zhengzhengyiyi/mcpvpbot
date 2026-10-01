@@ -36,6 +36,11 @@ public class BotAI {
         if (combat instanceof BotCombat) {
             ((BotCombat) combat).setBotType(type);
         }
+        
+        // Link movement to combat for totem cooldown check
+        if (movement instanceof BotMovement && combat instanceof BotCombat) {
+            ((BotMovement) movement).setCombat((BotCombat) combat);
+        }
     }
     
     public void setDifficulty(String difficulty) {
@@ -75,6 +80,11 @@ public class BotAI {
         }
 
         target = resolveTarget(server, preferredTarget);
+        
+        // Skip if no valid target
+        if (target == null) {
+            return;
+        }
         
         // Calculate distance
         double distance = calculateDistance(bot, target);
