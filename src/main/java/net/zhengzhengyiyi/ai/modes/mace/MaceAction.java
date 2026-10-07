@@ -53,7 +53,7 @@ public class MaceAction {
         }
         
         // Switch to mace when close to target for smash
-        if (distance <= 5.0) {
+        if (distance <= 3.0) {
             ItemStack mace = bot.getInventory().getStack(0);
             if (mace.getItem() == Items.MACE) {
                 bot.getInventory().setSelectedSlot(0);

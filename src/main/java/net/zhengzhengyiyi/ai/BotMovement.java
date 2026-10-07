@@ -18,7 +18,7 @@ public class BotMovement implements MovementBehavior {
     
     private EntityPlayerMPFake bot;
     private String botType = "smp";
-    private BotCombat combat;
+    public BotCombat combat;
     
     // Mode-specific movement implementations
     private CrystalMovement crystalMovement;

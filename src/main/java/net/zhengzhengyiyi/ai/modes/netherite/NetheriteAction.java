@@ -62,8 +62,12 @@ public class NetheriteAction {
         // Check for crit hit (2 blocks away and falling)
         boolean isCrit = distance <= 1.8 && !bot.isOnGround() && bot.fallDistance > 0;
         
-        // Attack if conditions are met
-        if (isCrit || distance <= 2.6) {
+        // Check if weapon is at least 90% charged
+        float attackCharge = bot.getAttackCooldownProgress(0.5f);
+        boolean isWeaponCharged = attackCharge >= 0.9f;
+        
+        // Attack if conditions are met and weapon is charged
+        if ((isCrit || distance <= 2.6) && isWeaponCharged) {
             // 5% chance to miss
             if (Math.random() < 0.08) {
                 return;

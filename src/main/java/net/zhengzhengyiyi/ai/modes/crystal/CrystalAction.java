@@ -4,11 +4,18 @@
 
 package net.zhengzhengyiyi.ai.modes.crystal;
 
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import carpet.patches.EntityPlayerMPFake;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.RespawnAnchorBlock;
-import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -22,13 +29,6 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
-
-import java.util.List;
-import java.util.ArrayList;
-import java.util.AbstractMap;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Crystal bot combat action - handles crystal bombing, anchor usage, and attacks
@@ -44,7 +44,14 @@ public class CrystalAction {
     private int totemCooldown = 2;
     
     // Anchor state machine
-    private int anchorStep = 0; // 0 = not started, 1 = anchor placed, 2 = charged, 3 = ready to explode
+    private enum AnchorStep {
+        IDLE,
+        PLACE,
+        CHARGE,
+        EXPLODE
+    }
+
+    private AnchorStep anchorStep = AnchorStep.IDLE;
     private BlockPos anchorPos = null;
     
     // Crystal spamming state
@@ -164,9 +171,23 @@ public class CrystalAction {
         // Use pearl to get close to player if far away
         handlePearlUsage(bot, horizontalDistance);
         
-        // Continue executing anchor sequence if in progress (must complete once started)
-        if (anchorStep > 0 && anchorCooldown == 0 && verticalDistance <= 2.2) {
-            executeAnchorSequence();
+        // Explode anchor when bot is higher than target by more than 0.8 blocks
+        if (botY >= targetY + 0.8 && anchorCooldown == 0) {
+            // Search for existing anchors around the target in a 3x3x3 box
+            BlockPos targetPos = target.getBlockPos();
+            net.minecraft.util.math.Box searchBox = new net.minecraft.util.math.Box(
+                targetPos.getX() - 1, targetPos.getY() - 1, targetPos.getZ() - 1,
+                targetPos.getX() + 1, targetPos.getY() + 1, targetPos.getZ() + 1
+            );
+            if (chargeAndExplodeExistingAnchor(searchBox)) {
+                // Successfully found and exploded an existing anchor
+                return;
+            }
+        }
+        
+        // Continue an active sequence, but do not run the idle state every tick.
+        if (anchorStep != AnchorStep.IDLE && verticalDistance <= 2.2) {
+            executeAnchorSequence(target);
             anchorCooldown = 1;
         }
         
@@ -181,6 +202,7 @@ public class CrystalAction {
         
         // Player under bot - Use priority system: anchor on player level > safe anchor with glowstone > pearl > walking
         if (targetY <= botY - 0.6 && distance <= 5.0 && verticalDistance <= 4.0) {
+        // if (targetY <= botY - 0.6 && distance <= 1.0 && verticalDistance <= 1.5) {
             handleAnchorPriority(target);
         }
         
@@ -339,12 +361,12 @@ public class CrystalAction {
             if (bot.getEntityWorld().isAir(playerLevelAnchor) && 
                 isLayerReachable(playerLevelAnchor) &&
                 !isPositionOccupiedByPlayer(playerLevelAnchor, target)) {
-                if (anchorStep == 0 && anchorCooldown == 0) {
+                if (anchorStep == AnchorStep.IDLE && anchorCooldown == 0) {
                     anchorPos = playerLevelAnchor;
                     // anchorReachable = true;
-                    anchorStep = 1;
+                    anchorStep = AnchorStep.PLACE;
                     LOGGER.info("Crystal - Priority 1: anchor on player level at {}", playerLevelAnchor);
-                    executeAnchorSequence();
+                    executeAnchorSequence(null);
                     anchorCooldown = 1;
                 }
                 return;
@@ -354,12 +376,12 @@ public class CrystalAction {
             BlockPos sameLevelAnchor = findSameLevelAnchorPosition(target);
             
             if (sameLevelAnchor != null) {
-                if (anchorStep == 0 && anchorCooldown == 0) {
+                if (anchorStep == AnchorStep.IDLE && anchorCooldown == 0) {
                     anchorPos = sameLevelAnchor;
                     // anchorReachable = false; // Will use glowstone between
-                    anchorStep = 1;
+                    anchorStep = AnchorStep.PLACE;
                     LOGGER.info("Crystal - Priority 2: safe anchor with glowstone at {}", sameLevelAnchor);
-                    executeAnchorSequence();
+                    executeAnchorSequence(null);
                     anchorCooldown = 1;
                 }
                 return;
@@ -430,44 +452,182 @@ public class CrystalAction {
         return false;
     }
     
-    private void executeAnchorSequence() {
-        // Check if anchor position is still reachable at each step
-        // if (anchorPos != null && !isLayerReachable(anchorPos)) {
-        //     LOGGER.info("Crystal - anchor position became unreachable during sequence, using pearl instead");
-        //     throwPearlTowardsTarget();
-        //     // Reset anchor sequence
-        //     anchorStep = 0;
-        //     anchorPos = null;
-        //     return;
-        // }
+    private void executeAnchorSequence(ServerPlayerEntity target) {
+        if (anchorStep == AnchorStep.IDLE || anchorPos == null) {
+            return;
+        }
 
-        if (explodeNearbyAnchors()) return;
-        if (chargeNearbyAnchors()) return;
-        
-        // Restore glowstone if slot is empty before charging
-        if (anchorStep == 2) {
+        if (anchorStep == AnchorStep.CHARGE) {
             restoreItemToSlot(4, Items.GLOWSTONE);
         }
-        
+
         switch (anchorStep) {
-            case 1:
+            case PLACE:
+                if (target != null) {
+                    Vec3d targetPos = target.getEntityPos();
+                    net.minecraft.util.math.Box searchBox = new net.minecraft.util.math.Box(
+                        targetPos.getX() - 1, targetPos.getY() - 1, targetPos.getZ() - 1,
+                        targetPos.getX() + 1, targetPos.getY() + 1, targetPos.getZ() + 1
+                    );
+
+                    if (chargeAndExplodeExistingAnchor(searchBox)) {
+                        return;
+                    }
+                }
+
                 placeAnchor();
-                anchorStep = 2;
-                LOGGER.info("Anchor sequence: Step 1 - Anchor placed at {}", anchorPos);
+                anchorStep = AnchorStep.CHARGE;
+                LOGGER.info("Anchor sequence: placed anchor at {}", anchorPos);
                 break;
-                
-            case 2:
+
+            case CHARGE:
                 chargeAnchor();
-                anchorStep = 3;
-                LOGGER.info("Anchor sequence: Step 2 - Anchor charged with glowstone");
+                anchorStep = AnchorStep.EXPLODE;
+                LOGGER.info("Anchor sequence: charged anchor at {}", anchorPos);
                 break;
-                
-            case 3:
+
+            case EXPLODE:
                 explodeAnchor();
-                anchorStep = 0;
+                anchorStep = AnchorStep.IDLE;
                 anchorPos = null;
-                LOGGER.info("Anchor sequence: Step 3 - Anchor exploded, sequence complete");
+                LOGGER.info("Anchor sequence complete");
                 break;
+
+            case IDLE:
+                break;
+        }
+    }
+    
+    /**
+     * Finds an existing anchor within the specified Box
+     * @param searchBox The Box to search for existing anchors
+     * @return The position of the closest existing anchor, or null if none found
+     */
+    private BlockPos findExistingAnchorInBox(net.minecraft.util.math.Box searchBox) {
+        World world = bot.getEntityWorld();
+        
+        // Search for all respawn anchors in the box
+        List<BlockPos> anchorsInBox = new ArrayList<>();
+        BlockPos min = new BlockPos((int)searchBox.minX, (int)searchBox.minY, (int)searchBox.minZ);
+        BlockPos max = new BlockPos((int)searchBox.maxX, (int)searchBox.maxY, (int)searchBox.maxZ);
+        
+        for (int x = min.getX(); x <= max.getX(); x++) {
+            for (int y = min.getY(); y <= max.getY(); y++) {
+                for (int z = min.getZ(); z <= max.getZ(); z++) {
+                    BlockPos checkPos = new BlockPos(x, y, z);
+                    if (world.getBlockState(checkPos).getBlock().equals(Blocks.RESPAWN_ANCHOR)) {
+                        anchorsInBox.add(checkPos);
+                    }
+                }
+            }
+        }
+        
+        if (anchorsInBox.isEmpty()) {
+            return null; // No anchors found
+        }
+        
+        // Find the closest anchor to the bot
+        BlockPos closestAnchor = null;
+        double closestDistance = Double.MAX_VALUE;
+        Vec3d botPos = bot.getEntityPos();
+        
+        for (BlockPos anchorPos : anchorsInBox) {
+            double distance = anchorPos.toCenterPos().squaredDistanceTo(botPos);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestAnchor = anchorPos;
+            }
+        }
+        
+        return closestAnchor;
+    }
+    
+    /**
+     * Charges and explodes an existing anchor within the specified Box (e.g., 3x3x3 around target)
+     * @param searchBox The Box to search for existing anchors
+     * @return true if an anchor was found and exploded, false otherwise
+     */
+    private boolean chargeAndExplodeExistingAnchor(net.minecraft.util.math.Box searchBox) {
+        World world = bot.getEntityWorld();
+        
+        // Search for all respawn anchors in the box
+        List<BlockPos> anchorsInBox = new ArrayList<>();
+        BlockPos min = new BlockPos((int)searchBox.minX, (int)searchBox.minY, (int)searchBox.minZ);
+        BlockPos max = new BlockPos((int)searchBox.maxX, (int)searchBox.maxY, (int)searchBox.maxZ);
+        
+        for (int x = min.getX(); x <= max.getX(); x++) {
+            for (int y = min.getY(); y <= max.getY(); y++) {
+                for (int z = min.getZ(); z <= max.getZ(); z++) {
+                    BlockPos checkPos = new BlockPos(x, y, z);
+                    if (world.getBlockState(checkPos).getBlock().equals(Blocks.RESPAWN_ANCHOR)) {
+                        anchorsInBox.add(checkPos);
+                    }
+                }
+            }
+        }
+        
+        if (anchorsInBox.isEmpty()) {
+            return false; // No anchors found
+        }
+        
+        // Find the closest anchor to the bot
+        BlockPos closestAnchor = null;
+        double closestDistance = Double.MAX_VALUE;
+        Vec3d botPos = bot.getEntityPos();
+        
+        for (BlockPos anchorPos : anchorsInBox) {
+            double distance = anchorPos.toCenterPos().squaredDistanceTo(botPos);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestAnchor = anchorPos;
+            }
+        }
+        
+        if (closestAnchor == null) {
+            return false;
+        }
+        
+        // Check if anchor is charged
+        int chargeLevel = world.getBlockState(closestAnchor).get(RespawnAnchorBlock.CHARGES);
+        
+        if (chargeLevel == 0) {
+            // Charge the anchor
+            bot.getInventory().setSelectedSlot(4);
+            bot.setCurrentHand(Hand.MAIN_HAND);
+            
+            double dx = closestAnchor.getX() + 0.5 - bot.getX();
+            double dy = closestAnchor.getY() + 0.5 - bot.getY();
+            double dz = closestAnchor.getZ() + 0.5 - bot.getZ();
+            float aimYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0f;
+            float aimPitch = (float) Math.toDegrees(Math.atan2(-dy, Math.sqrt(dx * dx + dz * dz)));
+            bot.setYaw(aimYaw);
+            bot.setPitch(aimPitch);
+            
+            ItemStack glowstoneItem = bot.getInventory().getStack(4);
+            bot.interactionManager.interactBlock(bot, world, glowstoneItem, Hand.MAIN_HAND, 
+                new BlockHitResult(closestAnchor.toCenterPos(), Direction.UP, closestAnchor, false));
+            LOGGER.info("Crystal bot charged existing anchor at {} (in search box)", closestAnchor);
+            anchorCooldown = 1;
+            return true;
+        } else {
+            // Explode the charged anchor
+            bot.getInventory().setSelectedSlot(3);
+            bot.setCurrentHand(Hand.MAIN_HAND);
+            
+            double dx = closestAnchor.getX() + 0.5 - bot.getX();
+            double dy = closestAnchor.getY() + 0.5 - bot.getY();
+            double dz = closestAnchor.getZ() + 0.5 - bot.getZ();
+            float aimYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0f;
+            float aimPitch = (float) Math.toDegrees(Math.atan2(-dy, Math.sqrt(dx * dx + dz * dz)));
+            bot.setYaw(aimYaw);
+            bot.setPitch(aimPitch);
+            
+            ItemStack anchorItem = bot.getInventory().getStack(3);
+            bot.interactionManager.interactBlock(bot, world, anchorItem, Hand.MAIN_HAND, 
+                new BlockHitResult(closestAnchor.toCenterPos(), Direction.UP, closestAnchor, false));
+            LOGGER.info("Crystal bot exploded existing anchor at {} (in search box)", closestAnchor);
+            anchorCooldown = 1;
+            return true;
         }
     }
     
@@ -531,84 +691,6 @@ public class CrystalAction {
         LOGGER.info("Crystal bot exploded anchor at {}", anchorPos);
     }
     
-    /**
-     * Explodes existing anchors nearby the bot (within 3 blocks)
-     */
-    private boolean explodeNearbyAnchors() {
-        BlockPos botPos = bot.getBlockPos();
-        int searchRadius = 3;
-        
-        for (int x = -searchRadius; x <= searchRadius; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -searchRadius; z <= searchRadius; z++) {
-                    BlockPos checkPos = botPos.add(x, y, z);
-                    if (bot.getEntityWorld().getBlockState(checkPos).getBlock().equals(Blocks.RESPAWN_ANCHOR)) {
-                        // Check if anchor is charged (has glowstone charge level > 0)
-                        int chargeLevel = bot.getEntityWorld().getBlockState(checkPos).get(RespawnAnchorBlock.CHARGES);
-                        if (chargeLevel > 0) {
-                            // Explode this anchor
-                            bot.getInventory().setSelectedSlot(3);
-                            bot.setCurrentHand(Hand.MAIN_HAND);
-                            
-                            double dx = checkPos.getX() + 0.5 - bot.getX();
-                            double dy = checkPos.getY() + 0.5 - bot.getY();
-                            double dz = checkPos.getZ() + 0.5 - bot.getZ();
-                            float aimYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0f;
-                            float aimPitch = (float) Math.toDegrees(Math.atan2(-dy, Math.sqrt(dx * dx + dz * dz)));
-                            bot.setYaw(aimYaw);
-                            bot.setPitch(aimPitch);
-                            
-                            ItemStack anchorItem = bot.getInventory().getStack(3);
-                            bot.interactionManager.interactBlock(bot, bot.getEntityWorld(), anchorItem, Hand.MAIN_HAND, 
-                                new BlockHitResult(checkPos.toCenterPos(), Direction.UP, checkPos, false));
-                            LOGGER.info("Crystal bot exploded nearby anchor at {}", checkPos);
-                            anchorCooldown = 1;
-                            return true; // Only explode one anchor per tick
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean chargeNearbyAnchors() {
-        BlockPos botPos = bot.getBlockPos();
-        int searchRadius = 3;
-        
-        for (int x = -searchRadius; x <= searchRadius; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -searchRadius; z <= searchRadius; z++) {
-                    BlockPos checkPos = botPos.add(x, y, z);
-                    if (bot.getEntityWorld().getBlockState(checkPos).getBlock().equals(Blocks.RESPAWN_ANCHOR)) {
-                        // Check if anchor is charged (has glowstone charge level > 0)
-                        int chargeLevel = bot.getEntityWorld().getBlockState(checkPos).get(RespawnAnchorBlock.CHARGES);
-                        if (chargeLevel == 0) {
-                            // Charge this anchor
-                            bot.getInventory().setSelectedSlot(4);
-                            bot.setCurrentHand(Hand.MAIN_HAND);
-                            
-                            double dx = checkPos.getX() + 0.5 - bot.getX();
-                            double dy = checkPos.getY() + 0.5 - bot.getY();
-                            double dz = checkPos.getZ() + 0.5 - bot.getZ();
-                            float aimYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0f;
-                            float aimPitch = (float) Math.toDegrees(Math.atan2(-dy, Math.sqrt(dx * dx + dz * dz)));
-                            bot.setYaw(aimYaw);
-                            bot.setPitch(aimPitch);
-                            
-                            ItemStack anchorItem = bot.getInventory().getStack(4);
-                            bot.interactionManager.interactBlock(bot, bot.getEntityWorld(), anchorItem, Hand.MAIN_HAND, new BlockHitResult(checkPos.toCenterPos(), Direction.UP, checkPos, false));
-                            LOGGER.info("Crystal bot charged nearby anchor at {}", checkPos);
-                            anchorCooldown = 1;
-                            return true; // Only charge one anchor per tick
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-    
     private void placeCrystalOnExistingObsidian(BlockPos obsidianPos, ServerPlayerEntity target) {
         bot.getInventory().setSelectedSlot(1);
         bot.setCurrentHand(Hand.MAIN_HAND);
@@ -659,7 +741,8 @@ public class CrystalAction {
         attackEntity(crystalPos, bot);
     }
     
-    private void attackEntity(BlockPos pos, ServerPlayerEntity bot) {
+    @SuppressWarnings("null")
+	private void attackEntity(BlockPos pos, ServerPlayerEntity bot) {
         if (bot == null || bot.getEntityWorld() == null) {
             return;
         }
@@ -851,14 +934,30 @@ public class CrystalAction {
         }
         return count;
     }
-    
+
     /**
      * Executes the d-tab sequence: place 2 anchors after crystal spamming when target has blast protection
      */
     private void executeDTabSequence(ServerPlayerEntity target) {
         switch (dTabStep) {
             case 0:
-                // Find first anchor position
+                // Try to find an existing anchor in a 3x3x3 box around the target first
+                {
+                    BlockPos targetPos = target.getBlockPos();
+                    net.minecraft.util.math.Box searchBox = new net.minecraft.util.math.Box(
+                        targetPos.getX() - 1, targetPos.getY() - 1, targetPos.getZ() - 1,
+                        targetPos.getX() + 1, targetPos.getY() + 1, targetPos.getZ() + 1
+                    );
+
+                    if (chargeAndExplodeExistingAnchor(searchBox)) {
+                        // Found and exploded an existing anchor, move to the second anchor.
+                        dTabStep = 4;
+                        dTabCooldown = 1;
+                        LOGGER.info("D-tab - exploded existing anchor, moving to second anchor");
+                        return;
+                    }
+                }
+
                 dTabPos1 = findDTabAnchorPosition(target);
                 if (dTabPos1 != null) {
                     dTabStep = 1;
@@ -869,9 +968,8 @@ public class CrystalAction {
                     dTabActive = false;
                 }
                 break;
-                
+
             case 1:
-                // Place first anchor
                 if (dTabPos1 != null && dTabCooldown == 0) {
                     placeAnchorAt(dTabPos1);
                     dTabStep = 2;
@@ -879,9 +977,8 @@ public class CrystalAction {
                     LOGGER.info("D-tab - placed first anchor at {}", dTabPos1);
                 }
                 break;
-                
+
             case 2:
-                // Charge first anchor
                 if (dTabPos1 != null && dTabCooldown == 0) {
                     anchorPos = dTabPos1;
                     chargeAnchor();
@@ -890,9 +987,8 @@ public class CrystalAction {
                     LOGGER.info("D-tab - charged first anchor at {}", dTabPos1);
                 }
                 break;
-                
+
             case 3:
-                // Explode first anchor
                 if (dTabPos1 != null && dTabCooldown == 0) {
                     explodeAnchorAt(dTabPos1);
                     dTabStep = 4;
@@ -900,25 +996,40 @@ public class CrystalAction {
                     LOGGER.info("D-tab - exploded first anchor at {}", dTabPos1);
                 }
                 break;
-                
+
             case 4:
-                // Find second anchor position
+                {
+                    BlockPos targetPos = target.getBlockPos();
+                    net.minecraft.util.math.Box searchBox = new net.minecraft.util.math.Box(
+                        targetPos.getX() - 1, targetPos.getY() - 1, targetPos.getZ() - 1,
+                        targetPos.getX() + 1, targetPos.getY() + 1, targetPos.getZ() + 1
+                    );
+
+                    if (chargeAndExplodeExistingAnchor(searchBox)) {
+                        dTabStep = 0;
+                        dTabActive = false;
+                        dTabPos1 = null;
+                        dTabPos2 = null;
+                        dTabCooldown = 1;
+                        LOGGER.info("D-tab - exploded existing anchor for second explosion, sequence complete");
+                        return;
+                    }
+                }
+
                 dTabPos2 = findDTabAnchorPosition(target);
                 if (dTabPos2 != null && !dTabPos2.equals(dTabPos1)) {
                     dTabStep = 5;
                     dTabCooldown = 1;
                     LOGGER.info("D-tab - found second anchor position at {}", dTabPos2);
                 } else {
-                    // Can't find second position, end sequence
                     dTabStep = 0;
                     dTabActive = false;
                     dTabPos1 = null;
                     LOGGER.info("D-tab - no second anchor position found, ending sequence");
                 }
                 break;
-                
+
             case 5:
-                // Place second anchor
                 if (dTabPos2 != null && dTabCooldown == 0) {
                     placeAnchorAt(dTabPos2);
                     dTabStep = 6;
@@ -926,9 +1037,8 @@ public class CrystalAction {
                     LOGGER.info("D-tab - placed second anchor at {}", dTabPos2);
                 }
                 break;
-                
+
             case 6:
-                // Charge second anchor
                 if (dTabPos2 != null && dTabCooldown == 0) {
                     anchorPos = dTabPos2;
                     chargeAnchor();
@@ -937,9 +1047,8 @@ public class CrystalAction {
                     LOGGER.info("D-tab - charged second anchor at {}", dTabPos2);
                 }
                 break;
-                
+
             case 7:
-                // Explode second anchor
                 if (dTabPos2 != null && dTabCooldown == 0) {
                     explodeAnchorAt(dTabPos2);
                     dTabStep = 0;
@@ -952,7 +1061,7 @@ public class CrystalAction {
                 break;
         }
     }
-    
+
     /**
      * Finds an anchor position within 2.5 blocks of the target
      * Includes positions behind the bot for d-tab

@@ -131,16 +131,16 @@ public class NetheriteMovement {
         }
         
         // Jump behavior
-        double jumpDistance = 1.1;
-        if (difficulty.equals("hard")) {
-            if (fullDistance <= 1.4 && bot.isOnGround()) {
-                bot.jump();
-            }
-        } else {
+        double jumpDistance = difficulty.equals("hard") ? 1.6 : 1.8;
+        // if (difficulty.equals("hard")) {
+        //     if (fullDistance <= 1.4 && bot.isOnGround()) {
+        //         bot.jump();
+        //     }
+        // } else {
             if (fullDistance <= jumpDistance && bot.isOnGround()) {
                 bot.jump();
             }
-        }
+        // }
     }
     
     private void handleWebDetection() {

@@ -7,18 +7,13 @@ import net.zhengzhengyiyi.ai.modes.smp.SmpAction;
 import net.zhengzhengyiyi.ai.modes.netherite.NetheriteAction;
 import net.zhengzhengyiyi.ai.modes.mace.MaceAction;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Main combat delegator - routes combat actions to mode-specific implementations
  */
 public class BotCombat implements CombatBehavior {
-    private static final Logger LOGGER = LoggerFactory.getLogger("BotCombat");
-    
-    private EntityPlayerMPFake bot;
+    public EntityPlayerMPFake bot;
     private String botType = "smp";
-    private String difficulty = "middle";
+    // private String difficulty = "middle";
     
     // Mode-specific action implementations
     private CrystalAction crystalAction;
@@ -51,7 +46,7 @@ public class BotCombat implements CombatBehavior {
     }
     
     public void setDifficulty(String difficulty) {
-        this.difficulty = difficulty;
+        // this.difficulty = difficulty;
         // Propagate difficulty to mode-specific actions
         if (smpAction != null) smpAction.setDifficulty(difficulty);
         if (netheriteAction != null) netheriteAction.setDifficulty(difficulty);
