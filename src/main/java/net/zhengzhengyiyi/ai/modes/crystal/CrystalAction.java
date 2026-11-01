@@ -41,7 +41,7 @@ public class CrystalAction {
     private int anchorCooldown = 0;
     private int attackCooldown = 0;
     private int crystalCooldown = 0;
-    private int totemCooldown = 2;
+    private int totemCooldown = 4;
     
     // Anchor state machine
     private enum AnchorStep {
@@ -138,10 +138,13 @@ public class CrystalAction {
         }
         
         // Decrease cooldowns
-        if (pearlCooldown > 0) pearlCooldown--;
+        // if (pearlCooldown > 0) pearlCooldown--;
         if (anchorCooldown > 0) anchorCooldown--;
         if (attackCooldown > 0) attackCooldown--;
-        if (crystalCooldown > 0) crystalCooldown--;
+        if (crystalCooldown > 0) {
+            crystalCooldown--;
+            return;
+        }
         if (totemCooldown > 0) totemCooldown--;
         if (dTabCooldown > 0) dTabCooldown--;
         
@@ -241,7 +244,8 @@ public class CrystalAction {
         boolean hasPearls = pearls.getItem() == Items.ENDER_PEARL && pearls.getCount() > 0;
         
         // Use pearl if horizontal distance is between 3 and 10 blocks
-        if (horizontalDistance > 3.0 && horizontalDistance < 10.0 && hasPearls && pearlCooldown == 0) {
+        if (horizontalDistance > 2.5 && horizontalDistance < 10.0 && hasPearls && pearlCooldown == 0) {
+            System.out.println("bot uses pearl");
             throwPearlTowardsTarget();
         }
     }
@@ -269,9 +273,9 @@ public class CrystalAction {
         bot.setYaw(yaw);
         bot.setPitch(0.0f);
         
-        LOGGER.info("Crystal bot throwing ender pearl (anchor fallback)");
-        bot.interactionManager.interactBlock(bot, bot.getEntityWorld(), pearls, Hand.MAIN_HAND, new BlockHitResult(bot.getEntityPos(), Direction.UP, bot.getBlockPos(), false));
-        pearlCooldown = 1;
+        // LOGGER.info("Crystal bot throwing ender pearl (anchor fallback)");
+        bot.interactionManager.interactItem(bot, bot.getEntityWorld(), pearls, Hand.MAIN_HAND);
+        pearlCooldown = 0;
     }
     
     private void handleCrystalSpamming(ServerPlayerEntity target, double distance) {
