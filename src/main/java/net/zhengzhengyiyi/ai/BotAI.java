@@ -90,18 +90,20 @@ public class BotAI {
         double distance = calculateDistance(bot, target);
         double hitRange = 3.0;
         
-        // Move towards target first
-        movement.moveTowards(target);
-        
-        // Crystal bot has its own attack logic with distance checks
-        if (botType.equals("crystal") || botType.equals("cart")) {
+        if (botType.equals("cart")) {
             combat.attack(target, distance);
-        } else {
-            // Other bots use the old attack logic
-            if (distance <= hitRange && attackCooldown == 0) {
-                combat.attack(target, distance);
-                attackCooldown = 10;
-            }
+            if (((BotCombat) combat).isCartPausedThisTick()) return;
+            movement.moveTowards(target);
+            return;
+        }
+
+        movement.moveTowards(target);
+
+        if (botType.equals("crystal")) {
+            combat.attack(target, distance);
+        } else if (distance <= hitRange && attackCooldown == 0) {
+            combat.attack(target, distance);
+            attackCooldown = 10;
         }
     }
     

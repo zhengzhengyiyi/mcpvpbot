@@ -4,6 +4,7 @@ import carpet.patches.EntityPlayerMPFake;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.AbstractRailBlock;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.vehicle.TntMinecartEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -20,6 +21,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public final class CartAction {
+    private static final double BLOCK_REACH_SQUARED = 9.0;
     private enum Decision { COUNTER_RAIL, HEIGHT_ADVANTAGE, HEIGHT_DISADVANTAGE, INSTA_CART, SWORD_PRESSURE, NONE }
     private enum ComboStep { IDLE, BOW_FIRST, PLACE_RAIL, PLACE_CART, DETONATE, SHIELD }
 
@@ -29,6 +31,11 @@ public final class CartAction {
     private boolean useBowForCombo;
     private int comboTimeout;
     private int attackCooldown;
+    private int critJumpCooldown;
+    private int pearlCooldown;
+    private boolean raiseShieldAfterPearl;
+    private int totemPauseTicks;
+    private boolean pauseThisTick;
     private boolean bowUseStarted;
     private int bowChargeTicks;
     private final Set<BlockPos> ownRailPositions = new HashSet<>();
@@ -43,9 +50,31 @@ public final class CartAction {
     }
 
     public void performCombat(ServerPlayerEntity target, double distance) {
-        if (bot == null || target == null || !target.isAlive() || target.isSpectator()) return;
+        pauseThisTick = false;
+        if (bot == null) return;
+        if (totemPauseTicks > 0) {
+            totemPauseTicks--;
+            pauseThisTick = true;
+            holdStillDuringTotemPause();
+            return;
+        }
+        if (target == null || !target.isAlive() || target.isSpectator()) return;
         if (attackCooldown > 0) attackCooldown--;
-        replenishSupplies();
+        if (critJumpCooldown > 0) critJumpCooldown--;
+        if (pearlCooldown > 0) pearlCooldown--;
+        if (replenishSupplies()) {
+            totemPauseTicks = 4;
+            pauseThisTick = true;
+            holdStillDuringTotemPause();
+            return;
+        }
+
+        if (raiseShieldAfterPearl) {
+            raiseShieldAfterPearl();
+            return;
+        }
+
+        if (throwPearlWhileFalling(target)) return;
 
         if (comboStep != ComboStep.IDLE) {
             executeCombo(target);
@@ -55,21 +84,29 @@ public final class CartAction {
         Decision decision = evaluateState(target);
         if (decision == Decision.COUNTER_RAIL) {
             cancelNearbyRail();
+            pressureWithSword(target, distance);
             return;
         }
 
-        if (comboStep == ComboStep.IDLE) {
-            if (decision == Decision.HEIGHT_ADVANTAGE || decision == Decision.HEIGHT_DISADVANTAGE || decision == Decision.INSTA_CART) {
-                beginCombo(target, decision);
-            } else if (decision == Decision.SWORD_PRESSURE) {
-                pressureWithSword(target, distance);
-                return;
-            } else {
-                return;
-            }
+        if (decision == Decision.HEIGHT_ADVANTAGE || decision == Decision.HEIGHT_DISADVANTAGE || decision == Decision.INSTA_CART) {
+            beginCombo(target, decision);
+            executeCombo(target);
+            return;
         }
 
-        executeCombo(target);
+        pressureWithSword(target, distance);
+    }
+
+    public boolean isPausedThisTick() {
+        return pauseThisTick;
+    }
+
+    private void holdStillDuringTotemPause() {
+        bot.setVelocity(Vec3d.ZERO);
+        bot.setSprinting(false);
+        bot.stopUsingItem();
+        bowUseStarted = false;
+        bowChargeTicks = 0;
     }
 
     private Decision evaluateState(ServerPlayerEntity target) {
@@ -103,6 +140,10 @@ public final class CartAction {
 
     private void beginCombo(ServerPlayerEntity target, Decision decision) {
         comboRailPos = chooseRailPosition(target);
+        if (comboRailPos == null) {
+            resetCombo();
+            return;
+        }
         useBowForCombo = decision == Decision.HEIGHT_DISADVANTAGE;
         comboTimeout = 40;
         comboStep = decision == Decision.INSTA_CART ? ComboStep.BOW_FIRST : ComboStep.PLACE_RAIL;
@@ -115,6 +156,10 @@ public final class CartAction {
         }
         switch (comboStep) {
             case BOW_FIRST -> {
+                if (comboRailPos == null) {
+                    resetCombo();
+                    return;
+                }
                 Vec3d cartAim = comboRailPos.toCenterPos().add(0, 0.3, 0);
                 aimBowAt(cartAim);
                 if (!bowUseStarted) {
@@ -130,9 +175,12 @@ public final class CartAction {
                 }
             }
             case PLACE_RAIL -> {
-                if (comboRailPos == null || !bot.getEntityWorld().isAir(comboRailPos)) {
-                    resetCombo();
-                    return;
+                if (!isRailPositionAvailable(comboRailPos)) {
+                    comboRailPos = chooseRailPosition(target);
+                    if (comboRailPos == null) {
+                        resetCombo();
+                        return;
+                    }
                 }
                 useItemOnSupport(2, comboRailPos);
                 ownRailPositions.add(comboRailPos.toImmutable());
@@ -176,10 +224,41 @@ public final class CartAction {
 
     private void pressureWithSword(ServerPlayerEntity target, double distance) {
         selectSlot(0);
-        if (distance <= 3.2 && attackCooldown == 0 && bot.getAttackCooldownProgress(0.5f) >= 0.85f) {
-            bot.attack(target);
-            attackCooldown = 8;
+        if (distance <= 3.2 && critJumpCooldown == 0 && bot.isOnGround()) {
+            bot.jump();
+            critJumpCooldown = 12;
         }
+        if (distance <= 3.2 && bot.getAttackCooldownProgress(0.5f) >= 0.9f) {
+            bot.attack(target);
+        }
+    }
+
+    private boolean throwPearlWhileFalling(ServerPlayerEntity target) {
+        Vec3d velocity = bot.getVelocity();
+        if (bot.isOnGround() || velocity.y >= -0.08 || pearlCooldown > 0) return false;
+        double dx = target.getX() - bot.getX();
+        double dz = target.getZ() - bot.getZ();
+        if (dx * dx + dz * dz <= 400.0) return false;
+
+        ItemStack pearl = bot.getInventory().getStack(7);
+        if (pearl.getItem() != Items.ENDER_PEARL || pearl.isEmpty()) return false;
+
+        selectSlot(7);
+        bot.setCurrentHand(Hand.MAIN_HAND);
+        bot.interactionManager.interactItem(bot, bot.getEntityWorld(), pearl, Hand.MAIN_HAND);
+        pearlCooldown = 40;
+        raiseShieldAfterPearl = true;
+        return true;
+    }
+
+    private void raiseShieldAfterPearl() {
+        ItemStack shield = bot.getInventory().getStack(8);
+        if (shield.getItem() == Items.SHIELD && !shield.isEmpty()) {
+            selectSlot(8);
+            bot.setCurrentHand(Hand.MAIN_HAND);
+            bot.interactionManager.interactItem(bot, bot.getEntityWorld(), shield, Hand.MAIN_HAND);
+        }
+        raiseShieldAfterPearl = false;
     }
 
     private void beginBowUse() {
@@ -205,16 +284,22 @@ public final class CartAction {
     }
 
     private void placeBlockAt(int slot, BlockPos position) {
-        if (bot.getEntityWorld().isAir(position) && !bot.getEntityWorld().isAir(position.down())) {
+        if (bot.getEntityWorld().isAir(position) && !bot.getEntityWorld().isAir(position.down())
+                && canReachBlock(position.down())) {
             useItemOnSupport(slot, position);
         }
     }
 
     private void useItemOnSupport(int slot, BlockPos position) {
-        selectSlot(slot);
         BlockPos support = position.down();
+        if (!canReachBlock(support)) return;
+        selectSlot(slot);
         bot.interactionManager.interactBlock(bot, bot.getEntityWorld(), bot.getInventory().getStack(slot), Hand.MAIN_HAND,
                 new BlockHitResult(support.toCenterPos(), Direction.UP, support, false));
+    }
+
+    private boolean canReachBlock(BlockPos blockPos) {
+        return bot.getEyePos().squaredDistanceTo(blockPos.toCenterPos()) <= BLOCK_REACH_SQUARED;
     }
 
     private BlockPos chooseRailPosition(ServerPlayerEntity target) {
@@ -222,14 +307,45 @@ public final class CartAction {
         Direction side = Math.abs(towardBot.x) > Math.abs(towardBot.z)
                 ? (towardBot.x > 0 ? Direction.EAST : Direction.WEST)
                 : (towardBot.z > 0 ? Direction.SOUTH : Direction.NORTH);
-        return target.getBlockPos().offset(side);
+        BlockPos preferred = target.getBlockPos().offset(side);
+        BlockPos nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (int x = -3; x <= 3; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -3; z <= 3; z++) {
+                    BlockPos candidate = preferred.add(x, y, z);
+                    if (!isRailPositionAvailable(candidate)) continue;
+                    double distance = candidate.getSquaredDistance(preferred);
+                    if (distance < nearestDistance) {
+                        nearest = candidate.toImmutable();
+                        nearestDistance = distance;
+                    }
+                }
+            }
+        }
+        return nearest;
+    }
+
+    private boolean isRailPositionAvailable(BlockPos railPos) {
+        if (railPos == null || !bot.getEntityWorld().isAir(railPos)) return false;
+        BlockPos supportPos = railPos.down();
+        if (bot.getEntityWorld().getBlockState(supportPos).getCollisionShape(bot.getEntityWorld(), supportPos).isEmpty()
+                || !canReachBlock(supportPos)) return false;
+
+        Box minecartSpace = new Box(
+                railPos.getX() + 0.1, railPos.getY(), railPos.getZ() + 0.1,
+                railPos.getX() + 0.9, railPos.getY() + 0.9, railPos.getZ() + 0.9);
+        for (Entity entity : bot.getEntityWorld().getOtherEntities(bot, minecartSpace)) {
+            if (entity.isAlive() && entity.getBoundingBox().intersects(minecartSpace)) return false;
+        }
+        return true;
     }
 
     private void cancelNearbyRail() {
         BlockPos rail = findNearbyEnemyRail();
         if (rail == null) return;
         BlockPos cap = rail.up();
-        if (!bot.getEntityWorld().isAir(cap)) return;
+        if (!bot.getEntityWorld().isAir(cap) || !canReachBlock(rail)) return;
         selectSlot(4);
         bot.interactionManager.interactBlock(bot, bot.getEntityWorld(), bot.getInventory().getStack(4), Hand.MAIN_HAND,
                 new BlockHitResult(rail.toCenterPos(), Direction.UP, rail, false));
@@ -276,15 +392,15 @@ public final class CartAction {
         return obstruction.getType() == HitResult.Type.MISS || obstruction.getBlockPos().equals(comboRailPos);
         }
 
-    private void replenishSupplies() {
+    private boolean replenishSupplies() {
         ItemStack offhand = bot.getEquippedStack(EquipmentSlot.OFFHAND);
         if (offhand.getItem() != Items.TOTEM_OF_UNDYING) {
-            for (int slot = 7; slot < 36; slot++) {
+            for (int slot = 9; slot < 36; slot++) {
                 ItemStack reserve = bot.getInventory().getStack(slot);
                 if (reserve.getItem() == Items.TOTEM_OF_UNDYING) {
                     bot.equipStack(EquipmentSlot.OFFHAND, reserve.copyWithCount(1));
                     bot.getInventory().setStack(slot, ItemStack.EMPTY);
-                    break;
+                    return true;
                 }
             }
         }
@@ -293,6 +409,11 @@ public final class CartAction {
         refill(4, Items.OAK_PLANKS);
         refill(5, Items.GOLDEN_APPLE);
         if (bot.getInventory().getStack(6).isEmpty()) bot.getInventory().setStack(6, new ItemStack(Items.ARROW, 1));
+        ItemStack pearl = bot.getInventory().getStack(7);
+        if (pearl.isEmpty()) bot.getInventory().setStack(7, new ItemStack(Items.ENDER_PEARL, 16));
+        ItemStack shield = bot.getInventory().getStack(8);
+        if (shield.isEmpty()) bot.getInventory().setStack(8, new ItemStack(Items.SHIELD));
+        return false;
     }
 
     private void refill(int slot, net.minecraft.item.Item item) {

@@ -88,4 +88,8 @@ public class BotCombat implements CombatBehavior {
             cartAction.performCombat(target, distance);
         }
     }
+
+    public boolean isCartPausedThisTick() {
+        return cartAction != null && cartAction.isPausedThisTick();
+    }
 }

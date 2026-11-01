@@ -8,6 +8,7 @@ import net.minecraft.util.math.Vec3d;
 
 public final class CartMovement {
     public enum MovementState { APPROACH, STRIKING_RANGE, HEIGHT_ADJUSTMENT, BACKPEDAL_ESCAPE }
+    private static final double STRAFE_SCALE = 0.65;
 
     private EntityPlayerMPFake bot;
     private int strafeDirection = 1;
@@ -45,24 +46,24 @@ public final class CartMovement {
         switch (state) {
             case APPROACH -> {
                 forward = 0.30;
-                strafe = 0.06 * strafeDirection;
+                strafe = 0.06 * STRAFE_SCALE * strafeDirection;
                 bot.setSprinting(true);
             }
             case STRIKING_RANGE -> {
                 forward = horizontalDistance > 3.2 ? 0.12 : 0.0;
-                strafe = 0.15 * strafeDirection;
+                strafe = 0.15 * STRAFE_SCALE * strafeDirection;
                 bot.setSprinting(false);
             }
             case HEIGHT_ADJUSTMENT -> {
                 forward = horizontalDistance > 2.8 ? 0.24 : 0.08;
-                strafe = 0.08 * strafeDirection;
+                strafe = 0.08 * STRAFE_SCALE * strafeDirection;
                 vertical = delta.y > 0.8 ? 0.22 : -0.10;
                 bot.setSprinting(true);
                 if (delta.y > 0.8 && bot.isOnGround()) bot.jump();
             }
             case BACKPEDAL_ESCAPE -> {
                 forward = -0.20;
-                strafe = 0.12 * strafeDirection;
+                strafe = 0.12 * STRAFE_SCALE * strafeDirection;
                 bot.setSprinting(false);
             }
         }

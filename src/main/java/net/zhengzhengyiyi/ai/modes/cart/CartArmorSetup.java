@@ -33,6 +33,11 @@ public final class CartArmorSetup {
         leggings.addEnchantment(enchantments.getOrThrow(Enchantments.BLAST_PROTECTION), 4);
         boots.addEnchantment(enchantments.getOrThrow(Enchantments.PROTECTION), 4);
 
+        helmet.addEnchantment(enchantments.getOrThrow(Enchantments.UNBREAKING), 6);
+        chestplate.addEnchantment(enchantments.getOrThrow(Enchantments.PROTECTION), 6);
+        leggings.addEnchantment(enchantments.getOrThrow(Enchantments.UNBREAKING), 6);
+        boots.addEnchantment(enchantments.getOrThrow(Enchantments.UNBREAKING), 6);
+
         bot.equipStack(EquipmentSlot.HEAD, helmet);
         bot.equipStack(EquipmentSlot.CHEST, chestplate);
         bot.equipStack(EquipmentSlot.LEGS, leggings);
@@ -45,9 +50,11 @@ public final class CartArmorSetup {
         bot.getInventory().setStack(4, new ItemStack(Items.OAK_PLANKS, 64));
         bot.getInventory().setStack(5, new ItemStack(Items.GOLDEN_APPLE, 64));
         bot.getInventory().setStack(6, new ItemStack(Items.ARROW, 1));
+        bot.getInventory().setStack(7, new ItemStack(Items.ENDER_PEARL, 16));
+        bot.getInventory().setStack(8, new ItemStack(Items.SHIELD));
 
-        for (int slot = 7; slot < 36; slot++) {
-            bot.getInventory().setStack(slot, new ItemStack(Items.TOTEM_OF_UNDYING, 1));
+        for (int slot = 9; slot < 36; slot++) {
+            bot.getInventory().setStack(slot, new ItemStack(Items.TOTEM_OF_UNDYING, 2));
         }
         bot.equipStack(EquipmentSlot.OFFHAND, new ItemStack(Items.TOTEM_OF_UNDYING));
     }
