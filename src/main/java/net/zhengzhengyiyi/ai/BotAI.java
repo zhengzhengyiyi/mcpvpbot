@@ -94,7 +94,7 @@ public class BotAI {
         movement.moveTowards(target);
         
         // Crystal bot has its own attack logic with distance checks
-        if (botType.equals("crystal")) {
+        if (botType.equals("crystal") || botType.equals("cart")) {
             combat.attack(target, distance);
         } else {
             // Other bots use the old attack logic

@@ -6,6 +6,7 @@ import net.zhengzhengyiyi.ai.modes.crystal.CrystalMovement;
 import net.zhengzhengyiyi.ai.modes.smp.SmpMovement;
 import net.zhengzhengyiyi.ai.modes.netherite.NetheriteMovement;
 import net.zhengzhengyiyi.ai.modes.mace.MaceMovement;
+import net.zhengzhengyiyi.ai.modes.cart.CartMovement;
 
 // import org.slf4j.Logger;
 // import org.slf4j.LoggerFactory;
@@ -25,6 +26,7 @@ public class BotMovement implements MovementBehavior {
     private SmpMovement smpMovement;
     private NetheriteMovement netheriteMovement;
     private MaceMovement maceMovement;
+    private CartMovement cartMovement;
     
     public BotMovement(EntityPlayerMPFake bot) {
         this.bot = bot;
@@ -32,6 +34,7 @@ public class BotMovement implements MovementBehavior {
         this.smpMovement = new SmpMovement(bot);
         this.netheriteMovement = new NetheriteMovement(bot);
         this.maceMovement = new MaceMovement(bot);
+        this.cartMovement = new CartMovement(bot);
     }
     
     @Override
@@ -41,6 +44,7 @@ public class BotMovement implements MovementBehavior {
         this.smpMovement.setBot(bot);
         this.netheriteMovement.setBot(bot);
         this.maceMovement.setBot(bot);
+        this.cartMovement.setBot(bot);
     }
     
     public void setBotType(String type) {
@@ -68,6 +72,7 @@ public class BotMovement implements MovementBehavior {
         if (smpMovement != null) smpMovement.setBot(bot);
         if (netheriteMovement != null) netheriteMovement.setBot(bot);
         if (maceMovement != null) maceMovement.setBot(bot);
+        if (cartMovement != null) cartMovement.setBot(bot);
     }
     
     public void moveTowards(ServerPlayerEntity target) {
@@ -84,6 +89,8 @@ public class BotMovement implements MovementBehavior {
             netheriteMovement.moveTowards(target);
         } else if (botType.equals("mace")) {
             maceMovement.moveTowards(target);
+        } else if (botType.equals("cart")) {
+            cartMovement.moveTowards(target);
         } else {
             // Default movement - just look at target and sprint
             handleDefaultMovement(target);

@@ -17,6 +17,7 @@ import net.zhengzhengyiyi.ai.modes.crystal.CrystalArmorSetup;
 import net.zhengzhengyiyi.ai.modes.smp.SmpArmorSetup;
 import net.zhengzhengyiyi.ai.modes.netherite.NetheriteArmorSetup;
 import net.zhengzhengyiyi.ai.modes.mace.MaceArmorSetup;
+import net.zhengzhengyiyi.ai.modes.cart.CartArmorSetup;
 import net.minecraft.world.GameMode;
 import net.zhengzhengyiyi.ai.BotAI;
 
@@ -178,6 +179,7 @@ public class PvpBot implements ModInitializer {
 							// TODO builder.suggest("mace");
 							builder.suggest("crystal");
 							builder.suggest("netherite");
+							builder.suggest("cart");
 							return builder.buildFuture();
 						})
 						.executes(this::executePvpBotCommand)
@@ -256,9 +258,9 @@ public class PvpBot implements ModInitializer {
 		String type = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "type");
 		
 		// Validate the type
-		if (!type.equals("smp") && !type.equals("crystal") && !type.equals("netherite")) {
+		if (!type.equals("smp") && !type.equals("crystal") && !type.equals("netherite") && !type.equals("cart")) {
 			context.getSource().sendFeedback(() -> 
-				Text.literal("Invalid type! Must be: smp, netherite, or crystal"), 
+				Text.literal("Invalid type! Must be: smp, netherite, crystal, or cart"),
 				false
 			);
 			return 0;
@@ -290,9 +292,9 @@ public class PvpBot implements ModInitializer {
 		MinecraftServer server = context.getSource().getServer();
 
 		// Validate the type
-		if (!type.equals("smp") && !type.equals("netherite") && !type.equals("crystal")) {
+		if (!type.equals("smp") && !type.equals("netherite") && !type.equals("crystal") && !type.equals("cart")) {
 			context.getSource().sendFeedback(() -> 
-				Text.literal("Invalid type! Must be: smp, netherite, or crystal"), 
+				Text.literal("Invalid type! Must be: smp, netherite, crystal, or cart"),
 				false
 			);
 			return 0;
@@ -320,6 +322,9 @@ public class PvpBot implements ModInitializer {
 		}
 
 		switch (type) {
+			case "cart":
+				CartArmorSetup.setup(fakePlayer);
+				break;
 			case "smp":
 				equipSmpArmor(fakePlayer);
 				break;

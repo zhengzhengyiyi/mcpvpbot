@@ -6,6 +6,7 @@ import net.zhengzhengyiyi.ai.modes.crystal.CrystalAction;
 import net.zhengzhengyiyi.ai.modes.smp.SmpAction;
 import net.zhengzhengyiyi.ai.modes.netherite.NetheriteAction;
 import net.zhengzhengyiyi.ai.modes.mace.MaceAction;
+import net.zhengzhengyiyi.ai.modes.cart.CartAction;
 
 /**
  * Main combat delegator - routes combat actions to mode-specific implementations
@@ -20,6 +21,7 @@ public class BotCombat implements CombatBehavior {
     private SmpAction smpAction;
     private NetheriteAction netheriteAction;
     private MaceAction maceAction;
+    private CartAction cartAction;
 
     public BotCombat(EntityPlayerMPFake bot) {
         this.bot = bot;
@@ -27,6 +29,7 @@ public class BotCombat implements CombatBehavior {
         this.smpAction = new SmpAction(bot);
         this.netheriteAction = new NetheriteAction(bot);
         this.maceAction = new MaceAction(bot);
+        this.cartAction = new CartAction(bot);
     }
     
     @Override
@@ -36,6 +39,7 @@ public class BotCombat implements CombatBehavior {
         this.smpAction.setBot(bot);
         this.netheriteAction.setBot(bot);
         this.maceAction.setBot(bot);
+        this.cartAction.setBot(bot);
         
         // Link crystal movement to crystal action for totem cooldown check
         // This will be set when movement is initialized
@@ -63,6 +67,7 @@ public class BotCombat implements CombatBehavior {
         if (smpAction != null) smpAction.setBot(bot);
         if (netheriteAction != null) netheriteAction.setBot(bot);
         if (maceAction != null) maceAction.setBot(bot);
+        if (cartAction != null) cartAction.setBot(bot);
     }
     
     public void attack(ServerPlayerEntity target, double distance) {
@@ -79,6 +84,8 @@ public class BotCombat implements CombatBehavior {
             netheriteAction.performCombat(target, distance);
         } else if (botType.equals("mace")) {
             maceAction.performCombat(target, distance);
+        } else if (botType.equals("cart")) {
+            cartAction.performCombat(target, distance);
         }
     }
 }
